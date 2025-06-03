@@ -1458,7 +1458,7 @@ Table: ZEROIZE_CURRENT_HEK output arguments
 
 #### PROGRAM_NEXT_HEK {#sec:program-next-hek-cmd}
 
-This command generates a random key and programs it into the next-available HEK slot. The \`active_hek_slot\` reported in @sec:report-epoch-key-state-cmd is incremented after successfully programming the random key. When this command is used to provision the first ratchet secret, the \`active_hek_slot\` is not incremented because it is already set to the first slot.
+This command generates a random key and programs it into the next-available HEK slot. The \`active_hek_slot\` reported in @sec:report-epoch-key-state-cmd is incremented after successfully programming the random key, with the exception that when this command is used to provision the first ratchet secret, the \`active_hek_slot\` is not incremented, because it is already set to the first slot.
 
 Command Code: 0x504E_484B ("PNHK")
 
@@ -1597,12 +1597,33 @@ Table: HEK state values {#tbl:hek-state-values}
 | 0h    | HEK_AVAIL_PREPROD     | HEK is available for pre-production  |
 |       |                       | testing.                             |
 +-------+-----------------------+--------------------------------------+
-| 1h    | HEK_AVAIL_PROD        | A randomized ratchet secret is       |
+| 1h    | HEK_UNAVAIL_EMPTY     | The drive has transitioned to the    |
+|       |                       | Production life cycle state and a    |
+|       |                       | ratchet secret has not yet been      |
+|       |                       | provisioned. The PROGRAM_NEXT_HEK    |
+|       |                       | command can be used to provision the |
+|       |                       | first secret.                        |
++-------+-----------------------+--------------------------------------+
+| 2h    | HEK_AVAIL_PROD        | A randomized ratchet secret is       |
 |       |                       | provisioned in the current slot. The |
 |       |                       | ZEROIZE_CURRENT_HEK command can be   |
 |       |                       | used to zeroized the current slot.   |
 +-------+-----------------------+--------------------------------------+
-| 2h    | HEK_AVAIL_PERMANENT   | All ratchet secrets have been        |
+| 3h    | HEK_UNAVAIL_ZEROIZED  | The current ratchet secret has been  |
+|       |                       | zeroized. The PROGRAM_NEXT_HEK       |
+|       |                       | command can be used to provision a   |
+|       |                       | new rachet secret.                   |
+|       |                       |                                      |
+|       |                       | If all slots have been zeroized, the |
+|       |                       | ENABLE_PERMANENT_HEK command can be  |
+|       |                       | used to make the HEK available.      |
++-------+-----------------------+--------------------------------------+
+| 4h    | HEK_UNAVAIL_CORRUPTED | The current ratchet secret slot is   |
+|       |                       | corrupted. The ZEROIZE_CURRENT_HEK   |
+|       |                       | commmand can be used to zeroized the |
+|       |                       | current slot.                        |
++-------+-----------------------+--------------------------------------+
+| 5h    | HEK_AVAIL_PERMANENT   | All ratchet secrets have been        |
 |       |                       | zeroized and permanent HEK mode has  |
 |       |                       | been enabled.                        |
 |       |                       |                                      |
@@ -1614,27 +1635,6 @@ Table: HEK state values {#tbl:hek-state-values}
 |       |                       | storage device can no longer be      |
 |       |                       | cryptographically erased via ratchet |
 |       |                       | secret zeroization.                  |
-+-------+-----------------------+--------------------------------------+
-| 3h    | HEK_UNAVAIL_EMPTY     | The drive has transitioned to the    |
-|       |                       | Production life cycle state and a    |
-|       |                       | ratchet secret has not yet been      |
-|       |                       | provisioned. The PROGRAM_NEXT_HEK    |
-|       |                       | command can be used to provision the |
-|       |                       | first secret.                        |
-+-------+-----------------------+--------------------------------------+
-| 4h    | HEK_UNAVAIL_ZEROIZED  | The current ratchet secret has been  |
-|       |                       | zeroized. The PROGRAM_NEXT_HEK       |
-|       |                       | command can be used to provision a   |
-|       |                       | new rachet secret.                   |
-|       |                       |                                      |
-|       |                       | If all slots have been zeroized, the |
-|       |                       | ENABLE_PERMANENT_HEK command can be  |
-|       |                       | used to make the HEK available.      |
-+-------+-----------------------+--------------------------------------+
-| 5h    | HEK_UNAVAIL_CORRUPTED | The current ratchet secret slot is   |
-|       |                       | corrupted. The ZEROIZE_CURRENT_HEK   |
-|       |                       | commmand can be used to zeroized the |
-|       |                       | current slot.                        |
 +-------+-----------------------+--------------------------------------+
 | 6h to | Reserved              | Reserved.                            |
 | FFFFh |                       |                                      |
@@ -1960,7 +1960,7 @@ Therefore a given input secret may safely be used in at most $2^{64.5}$ precondi
 
 This section provides an Entity Attestation Token (EAT) claims set as defined in RFC 9711 [@{ietf-rfc9711}]. These claims, enumerated in @tbl:eat-claims, describe the sanitization and epoch key state of the device. Other characteristics of the device, such as keys and other cryptographic identifiers, are captured and attested to by DICE and are therefore excluded from these claims.
 
-For concise encoding and simplicity, all claim values are 32-bit little-endian unsigned integers. This type is define as \`#0.26\` in section 2.1 of RFC 7049 [@{ietf-rfc7049}].
+For concise encoding and simplicity, all claim values are 32-bit little-endian unsigned integers. This type is defined as \`#0.26\` in section 2.1 of RFC 7049 [@{ietf-rfc7049}].
 
 - \`0\` is the CBOR major type for an unsigned integer
 - \`26\` specifies it as a uint32_t type
