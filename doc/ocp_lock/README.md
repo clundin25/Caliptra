@@ -2,6 +2,10 @@
   <img src="./images/LOCK_logo_color.svg" alt="OCP L.O.C.K. logo" style="width: 300px" />
 </p>
 
+## Specification Website
+
+The latest un-official version of the the specification can be found at https://chipsalliance.github.io/Caliptra/ocp-lock.html
+
 ## Specification source
 
 The specification source is available in [lock_spec.ocp](./lock_spec.ocp).
