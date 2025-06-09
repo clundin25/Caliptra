@@ -1,0 +1,92 @@
+# BSD 3-Clause License
+#
+# Copyright (c) 2022, Trusted Computing Group
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived from
+#    this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+name: OCP LOCK Spec CI
+
+on:
+  pull_request:
+    paths: 
+      - doc/ocp_lock/**
+
+jobs:
+  # Based on https://github.com/TrustedComputingGroup/specification-example.
+  ocp-lock-render:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/trustedcomputinggroup/pandoc:latest
+    name: Render OCP LOCK PDF
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Checkout Template dependencies
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          repository: "opencomputeproject/ocp-spec-tools"
+          ref: "45d41cc0d58edccf49d961443d52af4291db7735"
+          # The underlying Tex and templates assume this exists under the "extra" folder.
+          path: "extra"
+
+      # pandoc has certain constraints on our layout. For now we work around it with sed.
+      - name: Transform file paths
+        run: |
+          # Transforms `./diagrams` => `./doc/ocp_lock/diagrams`
+          sed -i 's/.\/diagrams/.\/doc\/ocp_lock\/diagrams/g' doc/ocp_lock/lock_spec.ocp
+
+          # Transforms `!include diagrams` => `!include doc/ocp_lock/diagrams`
+          sed -i 's/!include diagrams/!include doc\/ocp_lock\/diagrams/g' doc/ocp_lock/lock_spec.ocp
+
+          # Transforms `bibliography.yaml` => `doc/ocp_lock/bibliography.yaml`
+          sed -i 's/bibliography.yaml/doc\/ocp_lock\/bibliography.yaml/g' doc/ocp_lock/lock_spec.ocp
+
+      - name: Render OCP LOCK PDF
+        run: |
+          /usr/bin/build.sh \
+          --crossref=tcg \
+          --csl extra/ocp-pandoc-resources/ieee.csl \
+          --nogitversion \
+          --template extra/ocp-pandoc-resources/pdf/ocp.tex \
+          --template_html extra/ocp-pandoc-resources/html/ocp.html.template \
+          --html_stylesheet extra/ocp-pandoc-resources/html/style.css \
+          --html_stylesheet extra/ocp-pandoc-resources/html/github-markdown.css \
+          --resourcedir extra/ocp-pandoc-resources/pdf \
+          --pdf OCP-LOCK-Specification-${{ github.head_ref }}-${{ github.sha }}.pdf doc/ocp_lock/lock_spec.ocp 
+
+      - name: Upload PDF to PR
+        uses: actions/upload-artifact@master
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          name: OCP LOCK PDF
+          path: OCP-LOCK-Specification-${{ github.head_ref }}-${{ github.sha }}.pdf
