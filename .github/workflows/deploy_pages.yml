@@ -3,6 +3,7 @@ name: Deploy specifications to GitHub pages
 on:
   push:
     branches: ["main"]
+    tags: "ocp-lock-*"
 permissions:
   contents: read
   pages: write
@@ -52,8 +53,8 @@ jobs:
         run: |
           # Future "released versions" will be in their own namespace.
           # E.g. "1.0" instead of "main".
-          mkdir -p gh-pages/ocp-lock/main
-          cp doc/ocp_lock/ocp-lock.html gh-pages/ocp-lock/main/specification.html
+          mkdir -p gh-pages/ocp-lock/${{ github.ref_name }}
+          cp doc/ocp_lock/ocp-lock.html gh-pages/ocp-lock/${{ github.ref_name }}/specification.html
 
       - name: Upload static files as artifact
         id: deployment
